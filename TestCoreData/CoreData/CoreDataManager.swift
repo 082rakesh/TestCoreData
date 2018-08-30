@@ -11,13 +11,10 @@ import CoreData
 
 
 final class CoreDataManager {
-    
     // MARK:  Properties
-    
     private let modelName: String
 
     // MARK: - Initialization
-    
     init(modelName:String) {
         self.modelName = modelName
         // Setup Notification Handling
@@ -38,7 +35,6 @@ final class CoreDataManager {
         // Configure Managed Object Context
         managedObjectContext.persistentStoreCoordinator = self.persistentStoreCoordinator
         return managedObjectContext
-
     }()
     
     private lazy var managedObjectModel: NSManagedObjectModel = {

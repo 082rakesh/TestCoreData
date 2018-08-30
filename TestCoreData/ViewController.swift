@@ -12,35 +12,9 @@ import CoreData
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource{
 
     @IBOutlet weak var recordTableView: UITableView!
-//    var records: [Fact] = []
-//    var placeData: Place?
+
     var placesRecords: [Place] = []
 
-    
-    
-   // fileprivate let coreDataManager = CoreDataManager(modelName: "TestCoreData")
-    
-//    fileprivate lazy var fetchedResultsController: NSFetchedResultsController<Place> = {
-//        // Initialize Fetch Request
-//        let fetchRequest: NSFetchRequest<Place> = Place.fetchRequest()
-//
-//        //            // Add Sort Descriptors
-//        //            let sortDescriptor = NSSortDescriptor(key: "updatedAt", ascending: false)
-//        //            fetchRequest.sortDescriptors = [sortDescriptor]
-//
-//        // Initialize Fetched Results Controller
-//        let fetchedResultsController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: self.coreDataManager.managedObjectContext, sectionNameKeyPath: nil, cacheName: nil)
-//
-//        // Configure Fetched Results Controller
-//        fetchedResultsController.delegate = self
-//
-//        return fetchedResultsController
-//    }()
-
-    
-    
-
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -57,40 +31,19 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             print("Could not fetch. \(error), \(error.userInfo)")
         }
         
-        
-    
-        if placesRecords.count == 0 {
-            let networkManager = CountryManager()
-            networkManager.getCountryList { (countries, error) in
-                
-                guard let lMoview = countries else {
-                    return
-                }
-                                
-                for places in lMoview {
-                    
-                    let place = Place.init(entity: NSEntityDescription.entity(forEntityName: "Place", in:managedContext)!, insertInto: managedContext)
-
-                    place.title = places.title
-                    place.discription = places.description
-                    place.imageurl = places.imageHref
-                    self.save(placeName: place)
-                }
-                
-                DispatchQueue.main.async {
-                    self.recordTableView.reloadData()
-                }
-                
+        let networkManager = CountryManager()
+        networkManager.getCountryList { (countries, error) in
+            
+            guard let lMoview = countries else {
+                return
             }
-        }else{
-            print("placesRecords count : ", placesRecords.count)
-
+            
+            DispatchQueue.main.async {
+                for places in lMoview {
+                    self.save(placeName: places)
+                }
+            }
         }
-    
-        
-        
-        
-        
     }
 
     
@@ -108,7 +61,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         if let image1 = places.imageurl{
             cell.placesView.downloadedFrom(link: image1)
         }
-        cell.name.text = places.title
+        
+        cell.name.text = places.title ?? " Not Title"
         
         return cell
         
@@ -118,42 +72,64 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
     }
     
+    func save(placeName: Fact) {
     
-    
-//    func saveRecords() {
-//       let lplace =  records[0]
-//        placeData?.title = lplace.title
-//        placeData?.imageurl = lplace.imageHref
-//        placeData?.discription = lplace.description
-//    }
-    
-    
-    func save(placeName: Place) {
-        
         guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
             return
         }
-        
         let managedContext = appDelegate.persistentContainer.viewContext
-        let entity = NSEntityDescription.entity(forEntityName: "Place", in: managedContext)!
-        let place = NSManagedObject(entity: entity, insertInto: managedContext)
+        let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "Place")
+        fetchRequest.predicate = NSPredicate(format: "title == %@", placeName.title ??  "")
         
-        place.setValue(placeName.title, forKey: "title")
-        place.setValue(placeName.imageurl, forKey: "imageurl")
-        place.setValue(placeName.discription, forKey: "discription")
-
+        var fetchResult:[Place] = []
         
         do {
-            try managedContext.save()
-            placesRecords.append(place as! Place)
+             fetchResult = try managedContext.fetch(fetchRequest) as! [Place]
+            
+            if fetchResult.count == 0 {
+                let place = Place.init(entity: NSEntityDescription.entity(forEntityName: "Place", in:managedContext)!, insertInto: managedContext)
+                
+                place.setValue(placeName.title, forKey: "title")
+                place.setValue(placeName.imageHref, forKey: "imageurl")
+                place.setValue(placeName.description, forKey: "discription")
+                
+                do {
+                    try managedContext.save()
+                    placesRecords.append(place)
+                    
+                } catch let error as NSError {
+                    print("Could not save. \(error), \(error.userInfo)")
+                }
+                
+            }else{
+                for places in fetchResult {
+                    if places.title != placeName.title{
+                        
+                        let place = Place.init(entity: NSEntityDescription.entity(forEntityName: "Place", in:managedContext)!, insertInto: managedContext)
+                        
+                        place.setValue(placeName.title, forKey: "title")
+                        place.setValue(placeName.imageHref, forKey: "imageurl")
+                        place.setValue(placeName.description, forKey: "discription")
+                        
+                        do {
+                            try managedContext.save()
+                            placesRecords.append(place)
+                        } catch let error as NSError {
+                            print("Could not save. \(error), \(error.userInfo)")
+                        }
+                        
+                    }
+                }
+            }
+            
+            self.recordTableView.reloadData()
+
+           
+            
         } catch let error as NSError {
-            print("Could not save. \(error), \(error.userInfo)")
+            print("Could not fetch. \(error), \(error.userInfo)")
         }
     }
-    
-    
-    
-    
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
